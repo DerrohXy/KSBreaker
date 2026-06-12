@@ -1,0 +1,13 @@
+*.env
+*.config
+.idea
+.dist
+.vscode
+venv
+node_modules
+fileuploads
+build/
+dist/
+local.sh
+update_local.sh
+*.sh
