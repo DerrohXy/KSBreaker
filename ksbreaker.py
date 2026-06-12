@@ -5,6 +5,8 @@ from collections import deque
 from typing import Any
 import os
 import psutil
+import json
+from datetime import datetime
 
 
 def get_process_exe(pid: int) -> str:
@@ -13,6 +15,88 @@ def get_process_exe(pid: int) -> str:
         return os.readlink(exe)
     except Exception:
         return "--UNKNOWN--"
+
+
+def generate_incident_report_attachment_bundle(
+    stats: dict[str, Any],
+    cpu_avg: float,
+    cpu_now: float,
+) -> str:
+    path = f"/var/log/ksbreaker/incident-{datetime.now().isoformat()}.json"
+    bundle = {
+        "timestamp": time.time(),
+        "cpu_current": cpu_now,
+        "cpu_average": cpu_avg,
+        "system": stats.get("system"),
+        "processes": stats.get("processes"),
+    }
+
+    os.makedirs(os.path.dirname(path), exist_ok=True)
+
+    with open(path, "w") as f:
+        json.dump(bundle, f, indent=2)
+
+    return path
+
+
+def send_incident_report_alert(
+    stats,
+    cpu_avg: float,
+    cpu_now: float,
+) -> None:
+    """
+    Relies on "tmail" util, if installed
+    :param stats:
+    :param cpu_avg:
+    :param cpu_now:
+    :return:
+    """
+    attachment_path = generate_incident_report_attachment_bundle(
+        stats, cpu_avg, cpu_now
+    )
+
+    system = stats["system"]
+    top_procs = stats.get("processes", [])[:5]
+
+    process_summary = "\n".join(
+        [
+            f"PID={p['pid']} "
+            f"NAME={p.get('name')} "
+            f"CPU={p.get('cpu_percent')}% "
+            f"MEM={p.get('memory_percent')}% "
+            f"EXE={p.get('exe')}"
+            for p in top_procs
+        ]
+    )
+
+    message = f"""
+SERVER BREAKER ALERT
+
+CPU current: {cpu_now:.2f}%
+CPU average: {cpu_avg:.2f}%
+Memory: {system['memory']['percent']:.2f}%
+
+Top processes:
+{process_summary}
+
+Full incident report attached if available.
+"""
+
+    cmd = [
+        "tmail",
+        "send",
+        "--subject",
+        "SERVER EXHAUSTION ALERT - AUTO REBOOT INITIATED",
+        "--message",
+        message,
+        "--to",
+        "SELF",
+    ]
+
+    if attachment_path:
+        cmd.extend(["--file", attachment_path])
+
+    subprocess.run(cmd, check=False)
 
 
 def get_system_usage(
@@ -48,6 +132,7 @@ def get_system_usage(
                     "cpu_percent": proc.info["cpu_percent"],
                     "memory_percent": proc.info["memory_percent"],
                     "status": proc.info["status"],
+                    "exe": get_process_exe(proc.info["pid"]),
                 }
             )
         except (
@@ -105,8 +190,7 @@ def reboot_if_system_unhealthy(
 
             elapsed = time.time() - breach_start
             logging.warning(
-                "CPU=%.1f%% AVG=%.1f%% MEM=%.1f%% "
-                "Critical duration=%ds",
+                "CPU=%.1f%% AVG=%.1f%% MEM=%.1f%% " "Critical duration=%ds",
                 cpu,
                 avg_cpu,
                 mem,
@@ -115,31 +199,21 @@ def reboot_if_system_unhealthy(
 
             if elapsed >= sustained_breach_minutes * 60:
                 verification_stats = get_system_usage()
-                verification_cpu = (
-                    verification_stats["system"]["cpu_percent"]
-                )
-                verification_mem = (
-                    verification_stats["system"]["memory"]["percent"]
-                )
-                final_unhealthy = (
-                    verification_cpu >= cpu_threshold
-                )
+                verification_cpu = verification_stats["system"]["cpu_percent"]
+                verification_mem = verification_stats["system"]["memory"]["percent"]
+                final_unhealthy = verification_cpu >= cpu_threshold
 
                 if require_memory_pressure:
                     final_unhealthy = (
-                        final_unhealthy
-                        and verification_mem >= memory_threshold
+                        final_unhealthy and verification_mem >= memory_threshold
                     )
 
                 if final_unhealthy:
                     logging.critical(
-                        "System unhealthy for %s minutes. "
-                        "Preparing reboot.",
+                        "System unhealthy for %s minutes. " "Preparing reboot.",
                         sustained_breach_minutes,
                     )
-                    logging.critical(
-                        "Top offending processes:"
-                    )
+                    logging.critical("Top offending processes:")
 
                     for process in verification_stats["processes"]:
                         logging.critical(
@@ -148,8 +222,15 @@ def reboot_if_system_unhealthy(
                             process["name"],
                             process["cpu_percent"],
                             process["memory_percent"],
-                            get_process_exe(process["pid"])
+                            process["exe"],
                         )
+
+                    send_incident_report_alert(
+                        verification_stats,
+                        avg_cpu,
+                        verification_cpu,
+                    )
+                    time.sleep(5)
 
                     subprocess.run(
                         ["sync"],
