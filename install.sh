@@ -12,6 +12,7 @@ fi
 
 SERVICE_NAME="ksbreaker"
 INSTALL_DIR="/opt/ksbreaker"
+VENV_DIR="$INSTALL_DIR/venv"
 SCRIPT_NAME="ksbreaker.py"
 
 echo "Installing ${SERVICE_NAME}..."
@@ -41,24 +42,35 @@ else
     exit 1
 fi
 
-python3 -m pip install --upgrade pip
-python3 -m pip install psutil
+# python3 -m pip install --upgrade pip
+# python3 -m pip install psutil
 
 # ------------------------------------------------------------------
 # Install Files
 # ------------------------------------------------------------------
 
 mkdir -p "${INSTALL_DIR}"
-
 cp "${SCRIPT_NAME}" "${INSTALL_DIR}/${SCRIPT_NAME}"
+
+echo "Setting up python virtual environment..."
+
+python3 -m venv "$VENV_DIR"
 
 chown -R root:root "${INSTALL_DIR}"
 chmod 755 "${INSTALL_DIR}"
+chmod 755 "${VENV_DIR}"
 chmod 755 "${INSTALL_DIR}/${SCRIPT_NAME}"
+
+echo "Installing python dependencies..."
+
+"$VENV_DIR/bin/python3" -m pip install --upgrade pip
+"$VENV_DIR/bin/python3" -m pip install psutil
 
 # ------------------------------------------------------------------
 # Systemd Service
 # ------------------------------------------------------------------
+
+echo "Setting up systemd service..."
 
 cat >/etc/systemd/system/${SERVICE_NAME}.service <<EOF
 [Unit]
@@ -72,7 +84,7 @@ Group=root
 
 WorkingDirectory=${INSTALL_DIR}
 
-ExecStart=/usr/bin/python3 ${INSTALL_DIR}/${SCRIPT_NAME}
+ExecStart=${VENV_DIR}/bin/python3 ${INSTALL_DIR}/${SCRIPT_NAME}
 
 Restart=always
 RestartSec=10

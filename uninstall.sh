@@ -11,6 +11,7 @@ if [[ "$EUID" -ne 0 ]]; then
 fi
 
 SERVICE_NAME="ksbreaker"
+INSTALL_DIR="/opt/ksbreaker"
 
 systemctl stop ${SERVICE_NAME} || true
 systemctl disable ${SERVICE_NAME} || true
@@ -19,6 +20,6 @@ rm -f /etc/systemd/system/${SERVICE_NAME}.service
 
 systemctl daemon-reload
 
-rm -rf /opt/ksbreaker
+rm -rf "$INSTALL_DIR"
 
 echo "Removed ${SERVICE_NAME}"

@@ -1,3 +1,5 @@
+#!/opt/ksbreaker/venv/bin/python3
+
 import logging
 import subprocess
 import time
@@ -13,7 +15,8 @@ def get_process_exe(pid: int) -> str:
     exe = f"/proc/{pid}/exe"
     try:
         return os.readlink(exe)
-    except Exception:
+    except Exception as e:
+        logging.error(f"Error getting process *exe* : {e}")
         return "--UNKNOWN--"
 
 
@@ -257,8 +260,8 @@ if __name__ == "__main__":
 
     reboot_if_system_unhealthy(
         cpu_threshold=95.0,
-        moving_average_window=30,
-        sustained_breach_minutes=10,
-        check_interval_seconds=10,
+        moving_average_window=100,
+        sustained_breach_minutes=15,
+        check_interval_seconds=300,
         require_memory_pressure=False,
     )
