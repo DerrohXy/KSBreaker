@@ -15,8 +15,7 @@ def get_process_exe(pid: int) -> str:
     exe = f"/proc/{pid}/exe"
     try:
         return os.readlink(exe)
-    except Exception as e:
-        logging.error(f"Error getting process *exe* : {e}")
+    except Exception:
         return "--UNKNOWN--"
 
 
