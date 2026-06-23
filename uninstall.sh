@@ -13,8 +13,8 @@ fi
 SERVICE_NAME="ksbreaker"
 INSTALL_DIR="/opt/ksbreaker"
 
-systemctl stop ${SERVICE_NAME} || true
 systemctl disable ${SERVICE_NAME} || true
+systemctl stop ${SERVICE_NAME} || true
 
 rm -f /etc/systemd/system/${SERVICE_NAME}.service
 
