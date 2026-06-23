@@ -248,6 +248,12 @@ def reboot_if_system_unhealthy(
 
         else:
             breach_start = None
+            logging.info(
+                "CPU=%.1f%% AVG=%.1f%% MEM=%.1f%% ",
+                cpu,
+                avg_cpu,
+                mem,
+            )
 
         time.sleep(check_interval_seconds)
 
