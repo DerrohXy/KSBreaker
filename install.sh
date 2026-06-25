@@ -12,6 +12,7 @@ fi
 
 SERVICE_NAME="ksbreaker"
 INSTALL_DIR="/opt/ksbreaker"
+CLI_DIR="/usr/local/sbin"
 VENV_DIR="$INSTALL_DIR/venv"
 SCRIPT_NAME="ksbreaker.py"
 
@@ -67,6 +68,15 @@ echo "Installing python dependencies..."
 "$VENV_DIR/bin/python3" -m pip install psutil
 
 # ------------------------------------------------------------------
+# CLI util
+# ------------------------------------------------------------------
+
+echo "Setting up CLI util..."
+
+cp "${SCRIPT_NAME}" "${CLI_DIR}/${SERVICE_NAME}"
+chmod +x "${CLI_DIR}/${SERVICE_NAME}"
+
+# ------------------------------------------------------------------
 # Systemd Service
 # ------------------------------------------------------------------
 
@@ -84,7 +94,7 @@ Group=root
 
 WorkingDirectory=${INSTALL_DIR}
 
-ExecStart=${VENV_DIR}/bin/python3 ${INSTALL_DIR}/${SCRIPT_NAME}
+ExecStart=${VENV_DIR}/bin/python3 ${INSTALL_DIR}/${SCRIPT_NAME} start
 
 Restart=always
 RestartSec=10
