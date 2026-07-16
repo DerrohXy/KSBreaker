@@ -47,7 +47,7 @@ def save_email_config_interactive():
 
 def load_email_config():
     if not CONFIG_PATH.exists():
-        raise FileNotFoundError(f"No config found. Run: tmail.py config")
+        raise FileNotFoundError("No config found. Run: tmail.py config")
 
     return json.loads(CONFIG_PATH.read_text())
 
@@ -330,7 +330,7 @@ def reboot_if_system_unhealthy(
             #    cpu,
             #    avg_cpu,
             #    mem,
-            #)
+            # )
 
         time.sleep(check_interval_seconds)
 

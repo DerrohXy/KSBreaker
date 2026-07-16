@@ -1,2 +1,4 @@
 psutil
 black
+isort
+flake8
